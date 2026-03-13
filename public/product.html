@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - SuperLabs</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+        }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f9fafb; color: var(--text-main); margin: 0; padding: 0; }
+        .nav { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .nav a { text-decoration: none; color: var(--primary); font-weight: 500; }
+        .container { max-width: 1000px; margin: 40px auto; background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+        .product-image-container { background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 100px; border-right: 1px solid var(--border); overflow: hidden; }
+        .product-image-container img { width: 100%; height: 100%; object-fit: cover; }
+        .product-details { padding: 40px; }
+        h1 { margin: 0 0 10px; font-size: 32px; }
+        .sku { color: var(--text-muted); margin-bottom: 20px; font-family: monospace; }
+        .price { font-size: 36px; font-weight: 800; color: var(--primary); margin-bottom: 24px; }
+        .description { line-height: 1.6; color: #4b5563; margin-bottom: 30px; }
+        .stat { margin-bottom: 12px; display: flex; gap: 10px; }
+        .stat-label { font-weight: 600; width: 100px; }
+        .availability-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; }
+        .available { background: #dcfce7; color: #166534; }
+        .unavailable { background: #fee2e2; color: #991b1b; }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; margin: 20px; }
+            .product-image-container { height: 300px; border-right: none; border-bottom: 1px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/search.html">&larr; Back to Search</a>
+    </div>
+
+    <div class="container" id="productContainer">
+        <!-- Details will be loaded here -->
+        <div style="padding: 100px; text-align: center; grid-column: 1/-1;">Loading...</div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+
+        async function fetchProduct() {
+            if (!id) {
+                document.getElementById('productContainer').innerHTML = '<div style="padding: 100px; text-align: center; grid-column: 1/-1;">No product ID provided.</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/products/${id}`);
+                if (!res.ok) throw new Error('Product not found');
+                const p = await res.json();
+                renderProduct(p);
+            } catch (err) {
+                document.getElementById('productContainer').innerHTML = `<div style="padding: 100px; text-align: center; grid-column: 1/-1;">${err.message}</div>`;
+            }
+        }
+
+        function renderProduct(p) {
+            document.title = `${p.name} - SuperLabs Details`;
+            document.getElementById('productContainer').innerHTML = `
+                <div class="product-image-container">
+                    ${p.images && p.images.length > 0 ? `<img src="${p.images[0]}" alt="${p.name}">` : '📦'}
+                </div>
+                <div class="product-details">
+                    <h1>${p.name}</h1>
+                    <div class="sku">SKU: ${p.sku}</div>
+                    <div class="price">$${parseFloat(p.price).toFixed(2)}</div>
+                    
+                    <div class="stat">
+                        <span class="stat-label">Availability:</span>
+                        <span class="availability-badge ${p.availability ? 'available' : 'unavailable'}">
+                            ${p.availability ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                    </div>
+
+                    <div class="description">
+                        ${p.description || 'No description provided.'}
+                    </div>
+
+                    <button style="width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 8px; font-weight: 700; font-size: 18px; cursor: pointer;">
+                        Add to Cart
+                    </button>
+                    
+                    <div style="margin-top: 20px; font-size: 12px; color: var(--text-muted);">
+                        Product ID: ${p.id}<br>
+                        Added: ${new Date(p.createdAt).toLocaleDateString()}
+                    </div>
+                </div>
+            `;
+        }
+
+        fetchProduct();
+    </script>
+</body>
+</html>

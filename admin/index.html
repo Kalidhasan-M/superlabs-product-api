@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - SuperLabs Product API</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f9fafb;
+            --text: #111827;
+            --white: #ffffff;
+            --border: #e5e7eb;
+        }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--white); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        h1 { margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: 500; margin-bottom: 5px; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        button:hover { background: var(--primary-hover); }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+        th { background: #f3f4f6; }
+        .actions { display: flex; gap: 10px; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { 
+            background: white; 
+            margin: 5% auto; 
+            padding: 30px; 
+            width: 500px; 
+            max-height: 85vh; 
+            overflow-y: auto; 
+            border-radius: 12px; 
+            position: relative; 
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+        .close { position: absolute; right: 20px; top: 20px; cursor: pointer; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Product Management <button onclick="openModal()">Add Product</button></h1>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Availability</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="productTable">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add/Update Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Add New Product</h2>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="number" id="price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>SKU (Optional)</label>
+                    <input type="text" id="sku">
+                </div>
+                <div class="form-group">
+                    <label>Availability</label>
+                    <select id="availability" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+                        <option value="true">In Stock</option>
+                        <option value="false">Out of Stock</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Product Images</label>
+                    <div style="border: 2px dashed var(--border); padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; position: relative;" onclick="document.getElementById('imageInput').click()">
+                        <span id="uploadLabel">Click to upload images</span>
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="imagePreview" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;"></div>
+                    <input type="hidden" id="imageUrls">
+                </div>
+                <button type="submit">Save Product</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/products';
+        const productTable = document.getElementById('productTable');
+        const modal = document.getElementById('productModal');
+        const productForm = document.getElementById('productForm');
+
+        async function fetchProducts() {
+            try {
+                const res = await fetch(API_URL);
+                const products = await res.json();
+                productTable.innerHTML = products.map(p => `
+                    <tr>
+                        <td><code>${p.sku}</code></td>
+                        <td>${p.name}</td>
+                        <td>$${parseFloat(p.price).toFixed(2)}</td>
+                        <td>${p.availability ? '✅' : '❌'}</td>
+                        <td class="actions">
+                            <button onclick="editProduct('${p.id}')">Edit</button>
+                            <button class="btn-danger" onclick="deleteProduct('${p.id}')">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error('Error fetching products:', err);
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Are you sure?')) return;
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                fetchProducts();
+            } catch (err) {
+                console.error('Error deleting:', err);
+            }
+        }
+
+        async function editProduct(id) {
+            try {
+                const res = await fetch(`${API_URL}/${id}`);
+                const p = await res.json();
+                document.getElementById('productId').value = p.id;
+                document.getElementById('name').value = p.name;
+                document.getElementById('description').value = p.description;
+                document.getElementById('price').value = p.price;
+                document.getElementById('sku').value = p.sku;
+                document.getElementById('availability').value = p.availability.toString();
+                
+                const images = p.images || [];
+                document.getElementById('imageUrls').value = JSON.stringify(images);
+                renderImagePreviews(images);
+
+                document.getElementById('modalTitle').innerText = 'Edit Product';
+                modal.style.display = 'block';
+            } catch (err) {
+                console.error('Error fetching product details:', err);
+            }
+        }
+
+        productForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('productId').value;
+            const data = {
+                name: document.getElementById('name').value,
+                description: document.getElementById('description').value,
+                price: parseFloat(document.getElementById('price').value),
+                sku: document.getElementById('sku').value,
+                availability: document.getElementById('availability').value === 'true',
+                images: JSON.parse(document.getElementById('imageUrls').value || '[]')
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/${id}` : API_URL;
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    closeModal();
+                    fetchProducts();
+                } else {
+                    const err = await res.json();
+                    alert(err.message || 'Error saving product');
+                }
+            } catch (err) {
+                console.error('Error saving product:', err);
+            }
+        };
+
+        function openModal() {
+            productForm.reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('imageUrls').value = '[]';
+            document.getElementById('imagePreview').innerHTML = '';
+            document.getElementById('modalTitle').innerText = 'Add New Product';
+            modal.style.display = 'block';
+        }
+
+        function renderImagePreviews(images) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = images.map((url, index) => `
+                <div style="position: relative;">
+                    <img src="${url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;">
+                    <button type="button" onclick="removeImage(${index})" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; padding: 0; font-size: 12px;">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function removeImage(index) {
+            const images = JSON.parse(document.getElementById('imageUrls').value || '[]');
+            images.splice(index, 1);
+            document.getElementById('imageUrls').value = JSON.stringify(images);
+            renderImagePreviews(images);
+        }
+
+        document.getElementById('imageInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const uploadLabel = document.getElementById('uploadLabel');
+            const originalText = uploadLabel.innerText;
+            uploadLabel.innerText = '⌛ Uploading...';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const res = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.imageUrl) {
+                    const images = JSON.parse(document.getElementById('imageUrls').value || '[]');
+                    images.push(data.imageUrl);
+                    document.getElementById('imageUrls').value = JSON.stringify(images);
+                    renderImagePreviews(images);
+                }
+            } catch (err) {
+                console.error('Upload failed:', err);
+                alert('Upload failed. Please check if the server is running correctly.');
+            } finally {
+                uploadLabel.innerText = originalText;
+                e.target.value = ''; // Reset input so same file can be selected again
+            }
+        };
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = (event) => {
+            if (event.target == modal) closeModal();
+        };
+
+        fetchProducts();
+    </script>
+</body>
+</html>
