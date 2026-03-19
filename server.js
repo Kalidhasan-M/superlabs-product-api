@@ -5,8 +5,11 @@ const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 require('dotenv').config();
 
-const sequelize = require('./config/database');
+const { sequelize } = require('./models');
 const productRoutes = require('./routes/productRoutes');
+const brandRoutes = require('./routes/brandRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const authRoutes = require('./routes/authRoutes');
 const swaggerSpecs = require('./docs/swagger');
 const { errorHandler } = require('./middleware/errorMiddleware');
 
@@ -25,14 +28,14 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/products', productRoutes);
+app.use('/api/brands', brandRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/auth', authRoutes);
 
 // Swagger Documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
-// Home Route (Redirect to search or docs)
-app.get('/', (req, res) => {
-  res.redirect('/search.html');
-});
+// App works fine here without explicit route.
 
 // Error Handling Middleware
 app.use(errorHandler);
@@ -47,7 +50,7 @@ const startServer = async () => {
     console.log('PostgreSQL Database connected...');
 
     // Sync Models
-    await sequelize.sync(); // Use { force: true } only in dev to reset db
+    await sequelize.sync({ alter: true }); // Better than force:true to alter tables
     console.log('Database synced...');
 
     app.listen(PORT, () => {

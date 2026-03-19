@@ -1,11 +1,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { v4: uuidv4 } = require('uuid');
 
 const Product = sequelize.define('Product', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: () => uuidv4(),
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
   name: {
@@ -18,26 +17,42 @@ const Product = sequelize.define('Product', {
   },
   price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0.00
+    allowNull: false
   },
-  images: {
-    type: DataTypes.JSON, // PostgreSQL supports JSONB/JSON for arrays/objects
+  discount_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true
+  },
+  rating: {
+    type: DataTypes.DECIMAL(3, 2),
     allowNull: true,
-    defaultValue: []
+    defaultValue: 0
   },
-  sku: {
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'brands',
+      key: 'id'
+    }
+  },
+  category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'categories',
+      key: 'id'
+    }
+  },
+  image_url: {
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
-  },
-  availability: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
+    allowNull: true
   }
 }, {
   tableName: 'products',
-  timestamps: true
+  timestamps: true, // adds createdAt and updatedAt
+  createdAt: 'created_at',
+  updatedAt: false // not strictly requested but fine. Or we can just let sequelize manage both.
 });
 
 module.exports = Product;
